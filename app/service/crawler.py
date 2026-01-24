@@ -21,17 +21,15 @@ async def get_solution(problem_id: int, language_id: int) :
             await page.wait_for_selector("table", timeout=10000)
 
             rows = page.locator("#status-table tbody tr")
-
             count = await rows.count()
             solution_ids = []
             for i in range(count):
                 row = rows.nth(i)
-                print(await row.inner_text())
-                can_view = await row.get_attribute("data-can-view")
-                if can_view == "1":
-                    row_id = await row.get_attribute("id")
-                    if row_id:
-                        solution_ids.append(row_id)
+                html = await row.inner_html()
+                print(html)
+                if "data-can-view=\"1\"" in html:
+                    print(await row.get_attribute("id"))
+                    solution_ids.append(await row.get_attribute("id"))
 
             return solution_ids
         except Exception as e:
