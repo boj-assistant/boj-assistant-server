@@ -1,11 +1,22 @@
 from playwright.async_api import async_playwright
 from app.core.config import settings
 import logging
-from typing import Optional
+from typing import Optional, Literal
 
 logger = logging.getLogger(__name__)
 
-async def fetch_solution_from_boj(problem_id: int, language_id: int) -> Optional[str] :
+def get_language_id(language: Literal["java8", "node.js", "python3", "c++17"]) -> int:
+    return {
+        "java8": 3,
+        "node.js": 17,
+        "python3": 28,
+        "c++17": 84
+    }[language]
+
+async def get_solution_from_boj(problem_id: int, language: str) -> Optional[str] :
+
+    language_id = get_language_id(language)
+    
     status_url = f"https://www.acmicpc.net/status?problem_id={problem_id}&user_id=&language_id={language_id}&result_id=4"
     base_url = "https://www.acmicpc.net"
 
