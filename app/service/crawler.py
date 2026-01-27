@@ -1,39 +1,60 @@
 from playwright.async_api import async_playwright
-from pydantic import BaseModel
+from app.core.config import settings
+import logging
+from typing import Optional
 
-class SolutionRequest(BaseModel):
-    problem_id: int
-    language_id: int # C++17: 84
+logger = logging.getLogger(__name__)
 
-async def get_solution(problem_id: int, language_id: int) :
-    url = f"https://www.acmicpc.net/status?problem_id={problem_id}&user_id=&language_id={language_id}&result_id=4"
+async def fetch_solution_from_boj(problem_id: int, language_id: int) -> Optional[str] :
+    status_url = f"https://www.acmicpc.net/status?problem_id={problem_id}&user_id=&language_id={language_id}&result_id=4"
+    base_url = "https://www.acmicpc.net"
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
-
+        
         try:
-            page = await browser.new_page()
-            # domcontentloaded로 변경 (백준은 SSR이라 이 정도면 충분)
-            await page.goto(url, wait_until="domcontentloaded", timeout=100000)
+            # context를 명시적으로 생성하고 권한 설정
+            context = await browser.new_context(
+                permissions=["clipboard-read", "clipboard-write"],
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
             
-            # 2. 형님, 테이블이 로드될 때까지 명시적으로 잠시 기다려주는 게 확실합니다.
-            # 'tr' 요소가 하나라도 나타날 때까지 기다립니다.
-            await page.wait_for_selector("table", timeout=10000)
+            page = await context.new_page()
 
-            rows = page.locator("#status-table tbody tr")
-            count = await rows.count()
-            solution_ids = []
-            for i in range(count):
-                row = rows.nth(i)
-                html = await row.inner_html()
-                print(html)
-                if "data-can-view=\"1\"" in html:
-                    print(await row.get_attribute("id"))
-                    solution_ids.append(await row.get_attribute("id"))
+            await context.add_cookies([{
+                "name": "bojautologin",
+                "value": settings.BOJ_COOKIE,
+                "url": "https://www.acmicpc.net"
+            }])
 
-            return solution_ids
+            # domcontentloaded로 변경 (백준은 SSR이라 이 정도면 충분)
+            await page.goto(status_url, wait_until="domcontentloaded", timeout=30000)
+            
+            # 테이블이 로드될 때까지 대기 (더 구체적인 셀렉터 사용)
+            await page.wait_for_selector("#status-table tbody tr", timeout=30000)
+
+            hrefs = await page.evaluate("""
+                () => {
+                return [...document.querySelectorAll(
+                    '#status-table tbody tr td:nth-child(7) a'
+                )].map(a => a.getAttribute('href'));
+                }
+            """)
+
+            await page.goto(f"{base_url}{hrefs[0]}", wait_until="domcontentloaded", timeout=30000)
+            
+            # 복사 버튼이 나타날 때까지 대기
+            await page.wait_for_selector("button.copy-button", timeout=10000)
+            await page.click("button.copy-button")
+
+            solution = await page.evaluate(
+                "() => navigator.clipboard.readText()"
+            )
+            logger.info(f"Solution fetched from BOJ: {solution}")
+            return solution
+
         except Exception as e:
-            print(f"형님, 데이터를 가져오는 데 실패했습니다: {e}")
-            return []
+            logger.error(f"Error fetching solution from BOJ: {e}")
+            return None
         finally:
             await browser.close()

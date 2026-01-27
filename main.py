@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 from app.db.session import init_db_pool, close_db_pool
 from app.core.config import settings
+from app.core.prompts import load_prompt
 import app.core.logger as logger
 from fastapi import FastAPI
 from app.api import review
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 서버 시작 시 프롬프트 로드 (한 번만 실행)
+    load_prompt()
     await init_db_pool()
     yield
     await close_db_pool()

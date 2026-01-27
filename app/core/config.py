@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     
     GOOGLE_API_KEY: str
     
+    BOJ_COOKIE: str
+    
     @computed_field
     @property
     def DATABASE_URL(self) -> str:

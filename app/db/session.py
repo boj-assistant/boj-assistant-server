@@ -10,6 +10,7 @@ db_pool: Optional[asyncpg.Pool] = None
 async def init_db_pool() -> asyncpg.Pool:
     global db_pool
     if db_pool is None:
+        logger.info(f"Initializing database pool with settings: {settings}")
         db_pool = await asyncpg.create_pool(
             host=settings.DB_HOST,
             port=settings.DB_PORT,
@@ -17,12 +18,14 @@ async def init_db_pool() -> asyncpg.Pool:
             user=settings.DB_USER,
             password=settings.DB_PASSWORD,
         )
+        logger.info(f"Database pool initialized with settings: {settings}")
     return db_pool
 
 async def get_db_pool() -> asyncpg.Pool:
     global db_pool
     if db_pool is None:
         await init_db_pool()
+    logger.info(f"Getting database pool with settings: {settings}")
     return db_pool
 
 async def close_db_pool():
@@ -30,10 +33,12 @@ async def close_db_pool():
     if db_pool:
         try:
             await db_pool.close()
+            logger.info(f"Database pool closed with settings: {settings}")
         except Exception as e:
             logger.error(f"Error closing database pool: {e}")
         finally:
             db_pool = None
+            logger.info(f"Database pool set to None with settings: {settings}")
     else:
         logger.info("Database pool already closed")
-        
+    logger.info(f"Database pool is None with settings: {settings}")

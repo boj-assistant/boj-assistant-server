@@ -1,12 +1,9 @@
-from fastapi import APIRouter, Query
-from app.service.crawler import get_solution
+from fastapi import APIRouter
+from app.schemas.review import ReviewCreateRequest, ReviewResponse
+from app.service.review import get_review
 
 router = APIRouter(prefix="/api/v1", tags=["reviews"])
 
-@router.get("/reviews")
-async def get_reviews(
-    problem_id: int = Query(..., description="문제 ID"),
-    language_id: int = Query(..., description="언어 ID")
-):
-    solution = await get_solution(problem_id, language_id)
-    return solution
+@router.post("/reviews")
+async def create_review(request: ReviewCreateRequest) -> ReviewResponse:
+    return await get_review(request)
