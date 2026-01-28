@@ -15,6 +15,20 @@ async def check_if_promblem_exists(problem_id: int) -> bool:
             SELECT EXISTS(SELECT 1 FROM problems WHERE problem_id = $1)
         """, problem_id)
         return result
+
+async def check_if_solution_exists(problem_id: int, language: str) -> bool:
+    """problem_id가 존재하고 해당 language의 solution이 존재하는지 확인"""
+    db: asyncpg.Pool = await get_db_pool()
+    
+    async with db.acquire() as connection:
+        result = await connection.fetchval("""
+            SELECT EXISTS(
+                SELECT 1 FROM problems 
+                WHERE problem_id = $1 
+                AND solution ? $2
+            )
+        """, problem_id, language)
+        return result
         
 async def fetch_problem_solution(problem_id: int, language: str) -> Optional[str]:
     db: asyncpg.Pool = await get_db_pool()
